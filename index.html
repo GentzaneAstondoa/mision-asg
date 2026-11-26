@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+<title>Misión ASG</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Concepto: una escalera de calificación ASG (CCC a AAA, la escala de MSCI de los apuntes). Cada nivel superado sube un peldaño. Una columna, pensada para móvil y proyector. */
+:root{
+  --bg:#f2f5f1; --panel:#ffffff; --ink:#13201a; --muted:#566660; --line:#d6ddd5;
+  --accent:#0f766e; --accent-ink:#ffffff;
+  --a:#166534; --a-soft:#dcf1e2; --s:#1d4ed8; --s-soft:#dce6fb; --g:#a14a07; --g-soft:#fae6c8;
+  --good:#166534; --good-soft:#dcf1e2; --bad:#b42318; --bad-soft:#fbe0dd;
+  --star:#d99a06;
+  --font-display:'Bricolage Grotesque',system-ui,sans-serif;
+  --font-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1612; --panel:#162119; --ink:#e7efe9; --muted:#9bb0a4; --line:#2a3a31;
+  --accent:#2dd4bf; --accent-ink:#06201c;
+  --a:#6ee79a; --a-soft:#163b25; --s:#8fb2ff; --s-soft:#18284d; --g:#f3b565; --g-soft:#46300f;
+  --good:#6ee79a; --good-soft:#163b25; --bad:#ff9b8f; --bad-soft:#4a1d19;
+  --star:#f0b429; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1612; --panel:#162119; --ink:#e7efe9; --muted:#9bb0a4; --line:#2a3a31;
+  --accent:#2dd4bf; --accent-ink:#06201c;
+  --a:#6ee79a; --a-soft:#163b25; --s:#8fb2ff; --s-soft:#18284d; --g:#f3b565; --g-soft:#46300f;
+  --good:#6ee79a; --good-soft:#163b25; --bad:#ff9b8f; --bad-soft:#4a1d19;
+  --star:#f0b429; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--font-body)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;line-height:1.1}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.lbl{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.eyebrow{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+/* escala de calificación */
+.chip{display:inline-block;font-family:var(--font-mono);font-weight:700;padding:2px 10px;border-radius:8px;font-size:15px;line-height:1.5}
+.r-ccc{background:#dc2626;color:#fff}.r-b{background:#f97316;color:#1a0f05}.r-bb{background:#eab308;color:#1a1405}
+.r-bbb{background:#84cc16;color:#101a05}.r-a{background:#22c55e;color:#04180b}.r-aa{background:#10b981;color:#03180f}.r-aaa{background:#14b8a6;color:#031a17}
+.scale{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.scale span{font-family:var(--font-mono);font-weight:700;font-size:12px;text-align:center;padding:6px 0;border-radius:6px;opacity:.28}
+.scale span.on{opacity:1}
+.scale span.now{outline:3px solid var(--ink);outline-offset:2px}
+
+/* barra de estado */
+.hud{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.hud-in{max-width:760px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.hearts{display:flex;gap:4px}
+.hearts svg{width:26px;height:26px;fill:#e0364b;transition:transform .2s}
+.hearts svg.lost{fill:none;stroke:var(--muted);stroke-width:1.6;opacity:.55}
+.hearts.hit{animation:shake .4s}
+.score{text-align:right}.score b{font-family:var(--font-mono);font-size:20px;font-variant-numeric:tabular-nums}
+.mult{font-family:var(--font-mono);font-weight:700;background:var(--ink);color:var(--bg);padding:2px 8px;border-radius:8px;font-size:14px}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+.wrap{max-width:760px;margin:0 auto;padding-block:22px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+section[hidden]{display:none}
+
+/* botones */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 22px;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:16px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.alt{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.btn.big{min-height:56px;font-size:18px;padding-inline:30px}
+.ghost{background:none;border:1.5px dashed var(--line);border-radius:10px;padding:6px 12px;font-size:14px;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+
+/* inicio */
+.title{font-size:clamp(44px,11vw,84px);font-weight:800;letter-spacing:-.02em;margin:6px 0 14px}
+.lead{font-size:18px;max-width:52ch;color:var(--muted);margin-bottom:22px}
+.rules{display:grid;gap:0;margin:26px 0;border-top:1px solid var(--line)}
+.rules div{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.rules dt{font-weight:600}.rules dd{margin:0;color:var(--muted)}
+.field{display:grid;gap:6px;margin:22px 0 14px;max-width:420px}
+.field input{font:inherit;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);min-height:48px}
+.err{color:var(--bad);font-size:14px;min-height:20px}
+.board{margin-top:34px}
+.board h2{font-size:22px;margin-bottom:10px}
+.board ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.board li{display:grid;grid-template-columns:28px 1fr auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.board .pos{font-family:var(--font-mono);color:var(--muted)}
+
+/* mapa */
+.maphead{display:grid;gap:14px;margin-bottom:22px}
+.maphead h1{font-size:clamp(28px,6vw,40px)}
+.ladder{display:grid;gap:10px}
+.lv{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+.lv.locked{opacity:.5}
+.lv .rung{align-self:stretch;display:grid;place-items:center;border-radius:10px;font-family:var(--font-mono);font-weight:700;font-size:18px}
+.lv h3{font-size:20px;margin-bottom:2px}
+.lv p{color:var(--muted);font-size:14px}
+.lv .meta{display:flex;gap:10px;align-items:center;margin-top:6px;font-size:13px;color:var(--muted)}
+.stars{display:inline-flex;gap:3px}
+.star{width:16px;height:16px;background:var(--line);clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.star.on{background:var(--star)}
+.stars.lg .star{width:30px;height:30px}
+@media (max-width:520px){.lv{grid-template-columns:52px 1fr}.lv .btn{grid-column:1 / -1}}
+
+/* partida */
+.lvhead{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:14px}
+.lvname{font-size:clamp(24px,5vw,32px)}
+.prog{font-family:var(--font-mono);color:var(--muted);font-size:15px}
+.timerrow{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.timer{flex:1;height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--accent)}
+.timer i.low{background:var(--bad)}
+.tsec{font-family:var(--font-mono);font-weight:700;min-width:2ch;text-align:right}
+.q{display:grid;gap:14px}
+.tag{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.prompt{font-size:clamp(22px,4.6vw,30px)}
+.detail{font-size:17px;line-height:1.55;padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.opts{display:grid;gap:10px}
+.opts.cols2{grid-template-columns:1fr 1fr}
+.opts.cols3{grid-template-columns:repeat(3,1fr)}
+.opt{display:flex;align-items:center;gap:12px;text-align:left;min-height:56px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel)}
+.opt .key{font-family:var(--font-mono);font-weight:700;font-size:13px;min-width:26px;height:26px;display:grid;place-items:center;border-radius:6px;background:var(--bg);color:var(--muted);flex:none}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt.ok{border-color:var(--good);background:var(--good-soft)}
+.opt.no{border-color:var(--bad);background:var(--bad-soft)}
+.opt.dim{opacity:.4}
+.opt.sel{border-color:var(--accent);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.opts.cols3 .opt,.opts.cols2 .opt{flex-direction:column;justify-content:center;text-align:center;min-height:84px;font-weight:600;font-size:18px;gap:6px}
+.pa{background:var(--a-soft);border-color:var(--a)}.ps{background:var(--s-soft);border-color:var(--s)}.pg{background:var(--g-soft);border-color:var(--g)}
+.pa .key{color:var(--a)}.ps .key{color:var(--s)}.pg .key{color:var(--g)}
+.pbad{border-color:var(--bad)}.pgood{border-color:var(--good)}
+@media (max-width:420px){.opts.cols3 .opt{font-size:15px;padding:10px 4px}}
+.tools{display:flex;justify-content:flex-end}
+.flash{min-height:26px;font-family:var(--font-mono);font-weight:700;text-align:center}
+.flash.ok{color:var(--good)}.flash.no{color:var(--bad)}
+.fb{display:grid;gap:10px;padding:16px;border-radius:12px;border:1.5px solid var(--line)}
+.fb.ok{background:var(--good-soft);border-color:var(--good)}
+.fb.no{background:var(--bad-soft);border-color:var(--bad)}
+.fb h3{font-size:22px}
+.fb .pts{font-family:var(--font-mono);font-weight:700}
+.fb .btn{justify-self:start}
+.boss{display:grid;gap:6px}
+.boss b{font-family:var(--font-display);font-size:18px}
+.hp{height:14px;border-radius:99px;background:var(--line);overflow:hidden}
+.hp i{display:block;height:100%;background:var(--bad);transition:width .5s}
+
+/* ordenar */
+.slots{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.slot{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;min-height:50px;padding:8px 12px;border:1.5px dashed var(--line);border-radius:12px;color:var(--muted)}
+.slot .num{font-family:var(--font-mono);font-weight:700}
+.slot.filled{border-style:solid;background:var(--panel);color:var(--ink);cursor:pointer}
+.slot.locked{border-color:var(--good);background:var(--good-soft);cursor:default}
+.bank{display:flex;flex-wrap:wrap;gap:8px}
+.chipbtn{padding:10px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);text-align:left}
+.chipbtn:hover{border-color:var(--accent)}
+.ordermsg{color:var(--muted);font-size:14px;min-height:20px}
+
+/* pantallas finales */
+.panel{display:grid;gap:16px;padding:22px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.bigscore{font-family:var(--font-mono);font-size:clamp(40px,10vw,64px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.up{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.up .arrow{font-family:var(--font-mono);color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.facts div{padding:10px 0;border-top:1px solid var(--line)}
+.facts b{display:block;font-family:var(--font-mono);font-size:20px}
+.code{font-family:var(--font-mono);letter-spacing:.12em}
+.note{color:var(--muted);font-size:14px;margin:12px 0}
+.bars{display:grid;gap:12px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center}
+.bar .t{font-weight:600}
+.bar .n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:14px}
+.bar .track{grid-column:1 / -1;height:10px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar .track i{display:block;height:100%;background:var(--accent)}
+.cmp{display:grid;grid-template-columns:minmax(0,1.7fr) 1fr 1fr 1fr;gap:8px 10px;font-size:14px;align-items:center}
+.cmp .h{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.dpos{color:var(--good)}.dneg{color:var(--bad)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head><body>
+<header class="hud" id="hud" hidden>
+  <div class="hud-in">
+    <div><span class="lbl">Calificación</span><span class="chip r-ccc" id="rating">CCC</span></div>
+    <div class="hearts" id="hearts" role="img" aria-label="Vidas restantes"></div>
+    <div class="row" style="gap:8px;flex-wrap:nowrap"><span class="mult" id="mult" hidden>×2</span><div class="score"><span class="lbl">Puntos</span><b id="score">0</b></div></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="s-start">
+    <p class="eyebrow">Sostenibilidad empresarial · Grado medio</p>
+    <h1 class="title">Misión ASG</h1>
+    <p class="lead">Dos intentos para medir lo que sabes de sostenibilidad empresarial. Primero un diagnóstico sin apuntes. Después, con los apuntes, la misión completa de CCC a AAA.</p>
+    <div class="scale" aria-label="Escala de calificación ASG">
+      <span class="r-ccc on">CCC</span><span class="r-b on">B</span><span class="r-bb on">BB</span><span class="r-bbb on">BBB</span><span class="r-a on">A</span><span class="r-aa on">AA</span><span class="r-aaa on">AAA</span>
+    </div>
+    <dl class="rules">
+      <div><dt>Intento 1</dt><dd>Diagnóstico. Las 6 pruebas seguidas, sin apuntes, sin vidas, sin reloj y sin saber si aciertas. Al final ves tu porcentaje en cada prueba.</dd></div>
+      <div><dt>Intento 2</dt><dd>La misión, con los apuntes. 3 vidas, rachas de puntos, 2 comodines 50/50 y reloj. Sube de CCC a AAA.</dd></div>
+      <div><dt>Comparación</dt><dd>Al acabar la misión ves cuánto has mejorado en cada prueba respecto al diagnóstico. Haz los dos intentos en el mismo dispositivo.</dd></div>
+    </dl>
+    <div id="resume" hidden class="panel" style="margin-bottom:18px">
+      <p><b id="resume-name"></b>, tienes una partida a medias.</p>
+      <div class="row"><button class="btn" id="btn-resume" type="button">Continuar partida</button><button class="btn alt" id="btn-reset" type="button">Empezar de cero</button></div>
+    </div>
+    <div id="newgame">
+      <div class="field"><label for="name"><span class="lbl">Tu nombre o apodo</span></label><input id="name" type="text" maxlength="24" autocomplete="off" placeholder="Por ejemplo, Ane"><span class="err" id="name-err" role="alert"></span></div>
+      <div class="row">
+        <button class="btn big" id="btn-diag" type="button">Intento 1 · Diagnóstico</button>
+        <button class="btn big alt" id="btn-start" type="button">Intento 2 · Misión</button>
+      </div>
+      <p class="note" id="diag-note"></p>
+      <button class="ghost" id="btn-diag-reset" type="button" hidden>Borrar mi diagnóstico</button>
+    </div>
+    <div class="board" id="board-box" hidden><h2>Mejores partidas en este dispositivo</h2><ol id="board"></ol></div>
+  </section>
+
+  <section id="s-map" hidden>
+    <div class="maphead">
+      <div><p class="eyebrow" id="map-name"></p><h1 id="map-title">Tu escalera ASG</h1></div>
+      <div class="scale" id="map-scale"></div>
+      <p id="map-next" style="color:var(--muted)"></p>
+    </div>
+    <div class="ladder" id="ladder"></div>
+  </section>
+
+  <section id="s-play" hidden></section>
+
+  <section id="s-level" hidden></section>
+
+  <section id="s-over" hidden></section>
+
+  <section id="s-end" hidden></section>
+</main>
+
+<script>
+(function(){
+'use strict';
+var KEY='mision-asg-v1', LBKEY='mision-asg-ranking-v1';
+var RATINGS=['CCC','B','BB','BBB','A','AA','AAA'];
+var rcls=function(r){return 'r-'+r.toLowerCase();};
+var LEVELS=[
+  {n:1,name:'Vocabulario ASG',sub:'Pon nombre a cada concepto',tip:'8 preguntas · 25 s cada una'},
+  {n:2,name:'A, S o G',sub:'Clasifica criterios contra el reloj',tip:'12 tarjetas · cada vez menos tiempo'},
+  {n:3,name:'Pon en orden',sub:'Procesos, cadena de valor y escala ASG',tip:'4 ordenaciones'},
+  {n:4,name:'Caza del greenwashing',sub:'¿Acción real o postureo?',tip:'8 casos reales y falsos'},
+  {n:5,name:'Objetivos e indicadores',sub:'Cada objetivo con su KPI, y objetivos SMART',tip:'8 preguntas · 25 s cada una'},
+  {n:6,name:'Jefe final',sub:'Derrota al Gran Lavado Verde',tip:'8 escenarios · 20 s cada uno'}
+];
+
+/* ---------- contenido (sale de los apuntes) ---------- */
+var L1=[
+ ['RSC','Compromiso voluntario de la empresa para contribuir al desarrollo económico sostenible junto a empleados, comunidad y sociedad.'],
+ ['ASG','Los tres tipos de criterios con los que se analiza una empresa: ambientales, sociales y de gobernanza.'],
+ ['Greenwashing','Técnica de marketing con la que una empresa se presenta como sostenible sin serlo.'],
+ ['Stakeholders','Grupos de interés de la empresa: propietarios, empleados, clientes, proveedores, comunidad…'],
+ ['Taxonomía verde','Sistema de clasificación de la UE que establece qué actividades empresariales son realmente sostenibles.'],
+ ['KPI','Indicador que mide en qué grado se está consiguiendo un objetivo de sostenibilidad.'],
+ ['Análisis de materialidad','Diagnóstico inicial para identificar los temas más relevantes para la empresa y sus grupos de interés.'],
+ ['ISR','Inversión que, además de rentabilidad y riesgo, tiene en cuenta criterios ambientales, sociales y de gobernanza.'],
+ ['ODS','Los 17 objetivos de la Agenda 2030 a los que se vinculan los planes de sostenibilidad.'],
+ ['Bono verde','Instrumento que financia proyectos medioambientales: energía renovable, biodiversidad o gestión de residuos.'],
+ ['Bono azul','Instrumento que financia proyectos relacionados con el agua: recursos hídricos, gestión sostenible o vida marina.'],
+ ['Plan de sostenibilidad','Documento estratégico que define objetivos y acciones ASG alineados con la misión y visión de la empresa.'],
+ ['MSCI','Agencia que publica calificaciones ASG (ESG rating) de las empresas, de CCC a AAA.'],
+ ['GRI','Estándares más utilizados por las empresas europeas para reportar sus impactos ASG.'],
+ ['Pacto Verde Europeo','Marco de la UE del que emanan los aspectos ambientales más importantes, con la neutralidad climática como meta.'],
+ ['Informe de sostenibilidad','Documento donde la empresa comunica sus resultados ASG del ejercicio y rinde cuentas a sus grupos de interés.']
+];
+var L2D={
+ a:['Reducción de emisiones de CO₂','Transición a energías renovables','Consumo de agua','Reciclaje y gestión de residuos','Conservación de la biodiversidad','Cumplimiento de la normativa medioambiental','Eficiencia energética de las instalaciones','Descarbonización de los procesos productivos','Prevención de la contaminación de fuentes de agua'],
+ s:['Eliminación de discriminaciones en el trabajo','Contratos y salarios legales','Plan de seguridad y salud laboral','Formación continua de la plantilla','Atención y resolución de quejas de clientes','Respeto a los derechos sindicales','Igualdad y diversidad en la plantilla','Apoyo a la conciliación laboral y familiar','Medidas para prevenir riesgos laborales'],
+ g:['Independencia y diversidad del consejo de administración','Medidas contra la corrupción y el soborno','Protección de datos personales (RGPD)','Estrategia fiscal transparente','Remuneración de directivos y su justificación','Procedimientos de auditoría y control','Políticas de lobby y transparencia','Respeto a los derechos de los accionistas','Prevención de ciberataques']
+};
+var ORD=[
+ {t:'Integrar la sostenibilidad en la empresa',h:'Los 5 pasos, del primero al último.',i:['Evaluar el impacto ambiental y social','Definir objetivos con los stakeholders','Incorporar los ASG en la cadena de valor','Diseñar estrategias sostenibles','Hacer seguimiento y medir el avance']},
+ {t:'La cadena de valor',h:'Del origen del producto hasta el cliente final.',i:['Suministro','Producción','Almacenamiento','Ventas','Distribución','Posventa']},
+ {t:'Estructura de un plan de sostenibilidad',h:'Desde el diagnóstico inicial hasta el ajuste continuo.',i:['Análisis de materialidad','Objetivos','Plan de acción','Indicadores','Seguimiento periódico']},
+ {t:'Evolución de la responsabilidad empresarial',h:'De la antigua visión a la actual.',i:['Maximización de beneficios','Responsabilidad social voluntaria','Consideración ambiental','Impacto social','Desarrollo sostenible']},
+ {t:'Escala de calificación ASG',h:'De la peor a la mejor calificación.',i:['CCC','B','BB','BBB','A','AA','AAA']}
+];
+var GW=[
+ {co:'VerdeMax',claim:'Nuestro nuevo envase es 100% natural',ev:'El envase es verde y lleva una hoja dibujada. No hay certificación ni datos sobre materiales, y la empresa no publica ningún informe.',g:1,why:'Colores y lemas sin datos ni certificación. Es la técnica típica del greenwashing.'},
+ {co:'Textiles Nerbioi',claim:'Reducimos nuestra huella de carbono un 30% antes de 2030',ev:'Publica su huella cada año, ha fijado el objetivo con fecha, usa estándares GRI y un auditor externo revisa el informe.',g:0,why:'Objetivo medible y con plazo, indicadores publicados y evaluación externa: lo que pide un plan de sostenibilidad serio.'},
+ {co:'PetroLux',claim:'Plantamos 200 árboles: somos una empresa verde',ev:'La campaña ocupa toda su publicidad. El 98% de su negocio sigue siendo combustibles fósiles y no tiene plan de reducción de emisiones.',g:1,why:'Una acción pequeña se usa para tapar el impacto real. Falta coherencia con la actividad principal.'},
+ {co:'Panadería Ostadar',claim:'Hemos instalado placas solares',ev:'Mide su consumo eléctrico cada mes y publica en la tienda qué porcentaje de la energía es renovable.',g:0,why:'La acción tiene un indicador medido y comunicado de forma veraz.'},
+ {co:'FastModa',claim:'Colección consciente: moda sostenible',ev:'La colección usa un 5% de algodón reciclado. No publica datos de su cadena de suministro ni de condiciones laborales.',g:1,why:'Presenta como sostenible a toda la marca por un detalle mínimo y sin transparencia en la cadena de valor.'},
+ {co:'Cooperativa AguaViva',claim:'Bajaremos un 15% el agua por litro producido en 2027',ev:'Informa cada trimestre de sus avances, también cuando no cumple lo previsto, y explica qué ajusta.',g:0,why:'Objetivo SMART, seguimiento periódico y comunicación honesta.'},
+ {co:'AutoNova',claim:'Nuestros coches son eco-friendly',ev:'No explica por qué ni aporta datos de emisiones. Tampoco tiene certificaciones ambientales.',g:1,why:'Afirmación vaga, sin datos ni pruebas. No se puede comprobar.'},
+ {co:'Banco Ecobanc',claim:'Somos el banco más comprometido con el planeta',ev:'Colabora con una ONG, pero sigue financiando proyectos muy contaminantes y no informa de qué criterios ASG aplica.',g:1,why:'Colaborar con una ONG no basta si la actividad principal contradice el mensaje y no hay transparencia.'},
+ {co:'Gráficas Lur',claim:'Reciclamos el 70% de nuestros residuos de papel',ev:'Tiene una certificación ISO ambiental, publica el indicador de reciclaje y reconoce los objetivos que no ha alcanzado.',g:0,why:'Certificación, indicador y comunicación veraz, incluidos los fallos.'},
+ {co:'Hotel Mar',claim:'Reutiliza tus toallas y salva el planeta',ev:'El hotel no tiene medidas para ahorrar agua o energía en el resto de sus instalaciones. Solo ahorra en lavandería.',g:1,why:'Traslada la responsabilidad al cliente y presenta un ahorro propio como compromiso ambiental.'},
+ {co:'Logística Norte',claim:'Reducimos los kg de CO₂ por entrega',ev:'Instala sensores IoT para optimizar rutas, mide el CO₂ por entrega cada mes y lo publica en su informe.',g:0,why:'Usa digitalización para mejorar y reporta un indicador concreto.'},
+ {co:'AgroLimpio',claim:'Bio, eco, natural',ev:'Usa estas palabras en el nombre y en la caja, sin sello ni dato alguno. El producto es el mismo de siempre.',g:1,why:'Palabras con aire ecológico sin pruebas. Es un caso clásico de greenwashing.'}
+];
+/* En L5 y L6 la primera opción es la correcta; se barajan al jugar. */
+var L5=[
+ {p:'Objetivo: aumentar la eficiencia energética un 15% para 2025.',q:'¿Qué indicador mide este objetivo?',o:['Consumo de energía por unidad producida','Número de empleados formados al año','Porcentaje de mujeres en el consejo','Quejas de clientes por mes'],e:'La eficiencia energética se mide comparando la energía consumida con lo que se produce.'},
+ {p:'Objetivo: garantizar un entorno de trabajo seguro y saludable.',q:'¿Qué indicador mide este objetivo?',o:['Tasa de accidentes laborales por cada 100 personas empleadas al año','Litros de agua consumidos','Toneladas de residuos reciclados','Ventas totales del año'],e:'La seguridad laboral se mide con la tasa de accidentes en relación con la plantilla.'},
+ {p:'Objetivo: minimizar el uso de plásticos de un solo uso.',q:'¿Qué indicador mide este objetivo?',o:['Porcentaje de reducción anual de plásticos de un solo uso en la producción','Número de proveedores','Horas de teletrabajo','Beneficio neto'],e:'Se mide el porcentaje de reducción de ese plástico cada año.'},
+ {p:'Objetivo: mejorar el clima laboral.',q:'¿Qué indicador mide este objetivo?',o:['Nivel de satisfacción de la plantilla en la encuesta anual','Toneladas de CO₂ emitidas','Porcentaje de energía renovable','Litros de agua consumidos'],e:'La satisfacción de las personas trabajadoras es un indicador de sostenibilidad social.'},
+ {p:'Objetivo: reducir el consumo de agua.',q:'¿Qué indicador mide este objetivo?',o:['Litros de agua consumidos por unidad producida','Tasa de accidentes laborales','Horas de formación por persona','Porcentaje de mujeres directivas'],e:'La cantidad de agua consumida es un indicador de sostenibilidad ambiental.'},
+ {p:'Objetivo: usar más energía limpia.',q:'¿Qué indicador mide este objetivo?',o:['Porcentaje de la energía consumida que es renovable','Número de quejas de clientes','Rotación de la plantilla','Beneficio neto'],e:'El uso de energías renovables es un indicador ambiental.'},
+ {p:'Objetivo: reducir la huella de carbono de la empresa.',q:'¿Qué indicador mide este objetivo?',o:['Toneladas de CO₂ equivalente emitidas al año','Satisfacción de la plantilla','Número de reuniones del consejo','Porcentaje de ventas online'],e:'La huella de carbono se expresa en emisiones de CO₂ equivalente.'},
+ {p:'Objetivo: atender mejor a los clientes.',q:'¿Qué indicador mide este objetivo?',o:['Tiempo medio de resolución de quejas','Toneladas de residuos','Consumo eléctrico','Huella de carbono'],e:'Atender quejas y sugerencias es un indicador de gobernanza y de satisfacción de clientes.'},
+ {p:'Un objetivo ASG debe ser específico, medible, alcanzable, realista y temporal (SMART).',q:'¿Cuál de estos objetivos cumple los cinco requisitos?',o:['Reducir un 20% la huella de carbono antes de diciembre de 2028 respecto a 2024','Ser una empresa más verde','Intentar contaminar menos cuando se pueda','Mejorar la imagen de la empresa'],e:'Tiene cifra, punto de partida y fecha límite. Los demás son vagos y no se pueden medir.'},
+ {p:'Un equipo propone el objetivo «reducir el consumo de agua un 10%».',q:'¿Qué le falta para ser SMART?',o:['Un plazo: una fecha límite','Un logotipo verde','Una campaña en redes','Un patrocinador'],e:'Sin plazo no es temporal. Habría que añadir, por ejemplo, «antes de junio de 2027».'},
+ {p:'Tu empresa mide el indicador «procedimiento para atender quejas y sugerencias».',q:'¿A qué categoría de sostenibilidad pertenece?',o:['Gobernanza','Ambiental','Ninguna: no es un indicador','Solo a marketing'],e:'En los apuntes figura entre los indicadores de sostenibilidad de gobernanza.'}
+];
+var L6=[
+ {p:'Una gestora de fondos quiere saber si invertir en tu empresa con criterios ASG.',q:'¿Qué documento consultará sobre todo?',o:['El informe o memoria de sostenibilidad','El catálogo de productos','El plan de marketing','El organigrama de la plantilla'],e:'Los gestores de fondos consultan los informes de sostenibilidad para aplicar criterios ASG.'},
+ {p:'Tu empresa quiere acceder a bonos verdes y a ayudas de financiación sostenible.',q:'¿Qué le conviene?',o:['Que sus actividades estén incluidas en la taxonomía verde de la UE','Cambiar el logotipo a color verde','Esperar a que lo obligue la ley','Patrocinar un equipo deportivo'],e:'Estar en la taxonomía verde facilita subvenciones, ayudas y bonos verdes.'},
+ {p:'Una empresa en cartera tiene una calificación ASG de CCC según MSCI.',q:'¿Qué significa?',o:['Está muy expuesta a riesgos ASG','Es líder en gestión de riesgos ASG','Tiene un historial mixto','No tiene riesgos ASG'],e:'CCC y B indican alta exposición a riesgos; AA y AAA, liderazgo.'},
+ {p:'Quieres saber cuáles son los temas más relevantes para tu empresa y qué esperan sus grupos de interés.',q:'¿Qué haces primero?',o:['Un análisis de materialidad','Una campaña publicitaria','Una auditoría fiscal','Comprar energía renovable'],e:'El análisis de materialidad da el punto de partida y es la base del informe de sostenibilidad.'},
+ {p:'Una empresa instala en sus almacenes sensores que ajustan la luz y la climatización según haya personas.',q:'¿Qué tecnología está usando?',o:['Internet de las Cosas (IoT)','Big Data únicamente','Una certificación ISO','Un bono azul'],e:'Los sensores con monitoreo en tiempo real son IoT, que mejora la eficiencia de energía y agua.'},
+ {p:'Una marca lanza la campaña «Don’t buy this jacket» e invita a reparar antes de comprar.',q:'¿De qué empresa es?',o:['Patagonia','IKEA','Mastercard','Marks & Spencer'],e:'Patagonia invita a reflexionar sobre el consumo innecesario.'},
+ {p:'Tu jefa dice: «Ya tenemos plan de sostenibilidad, así que somos sostenibles».',q:'¿Qué es lo realmente importante según los apuntes?',o:['Fijar objetivos, actuar y reportar indicadores del impacto','Tener el plan bien encuadernado','Publicarlo en la web','Que sea obligatorio por ley'],e:'Tener un plan no implica ser sostenible. Importan los objetivos, las acciones y los indicadores.'},
+ {p:'El Reglamento SFDR afecta a quienes comercializan productos financieros.',q:'¿Qué les obliga a hacer?',o:['Ofrecer información sobre la sostenibilidad de esos productos','Pagar más impuestos','Invertir solo en energía solar','Contratar más personal'],e:'Regula la transparencia en la inversión socialmente responsable.'},
+ {p:'Un inversor decide no invertir nunca en empresas de armamento ni de juego.',q:'¿Qué estrategia de ISR aplica?',o:['Exclusión de inversiones','Invertir en proyectos específicos','Invertir en objetivos ASG','Invertir en bonos azules'],e:'La exclusión deja fuera actividades consideradas poco éticas.'},
+ {p:'Un director quiere liderar la transformación sostenible de su empresa.',q:'¿Qué debe establecer?',o:['Visión, valores y camino a seguir','Solo el presupuesto anual','Solo los turnos de trabajo','Un nuevo logotipo'],e:'Los líderes sostenibles marcan la visión, los valores y el camino.'},
+ {p:'Una empresa tiene proveedores que no cumplen ningún criterio sostenible.',q:'¿Qué paso de la integración está fallando?',o:['Incorporar los ASG en la cadena de valor','Evaluar el impacto ambiental','Medir el avance','Ninguno'],e:'Los proveedores también deben cumplir criterios sostenibles al extraer materias primas o prestar servicios.'},
+ {p:'La red mundial de inversores comprometidos con la ISR se creó en 2006.',q:'¿Cómo se llama?',o:['UN-PRI','Spainsif','GRI','Pacto Verde'],e:'UN-PRI es la red mundial. Spainsif es su equivalente en España.'},
+ {p:'Quieres que tu empresa resulte más atractiva para las personas jóvenes que buscan trabajo.',q:'¿Qué beneficio de la sostenibilidad aprovechas?',o:['Atracción y retención de talento','Ventaja competitiva en precios','Reducción de impuestos','Menos reuniones'],e:'La empresa sostenible es más atractiva para las personas trabajadoras, sobre todo jóvenes.'},
+ {p:'Una empresa usa IA para analizar patrones y pronosticar fallos en sus máquinas.',q:'¿Qué consigue en sostenibilidad?',o:['Evitar consumos innecesarios y reducir desperdicios','Sustituir a toda la plantilla','Obtener un bono verde automáticamente','Nada: la IA no aporta'],e:'La IA ayuda a optimizar sistemas energéticos, automatizar procesos y reducir desperdicios.'}
+];
+
+/* Preguntas del diagnóstico (intento 1): mismas para todos, en orden aleatorio. Índices sobre cada banco. */
+var DI={
+  l1:['RSC','ASG','Greenwashing','Taxonomía verde','KPI','Análisis de materialidad','ISR','Bono verde'],
+  ord:[0,1,2,3], gw:[0,1,2,3,4,5,6,8], l5:[0,1,2,4,6,8,9,10], l6:[0,1,2,3,4,6,8,12]
+};
+/* ---------- utilidades ---------- */
+function $(s,r){return (r||document).querySelector(s);}
+function el(tag,attrs){
+  var e=document.createElement(tag);
+  if(attrs)for(var k in attrs){if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k]);}
+  for(var i=2;i<arguments.length;i++){var c=arguments[i];if(c==null||c===false)continue;e.append(c.nodeType?c:document.createTextNode(String(c)));}
+  return e;
+}
+function shuffle(a){var b=a.slice();for(var i=b.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=b[i];b[i]=b[j];b[j]=t;}return b;}
+function pickIdx(arr,idxs){return shuffle(idxs.map(function(i){return arr[i];}));}
+function fmt(n){try{return Number(n).toLocaleString('es-ES');}catch(e){return String(n);}}
+function mmss(ms){var s=Math.round(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
+function GameOver(){this.name='GameOver';}
+GameOver.prototype=Object.create(Error.prototype);
+function stars(n,lg){var w=el('span',{class:'stars'+(lg?' lg':''),'aria-label':n+' de 3 estrellas'});for(var i=0;i<3;i++)w.append(el('span',{class:'star'+(i<n?' on':'')}));return w;}
+
+/* ---------- estado ---------- */
+function fresh(name){return {name:name||'',lives:3,powers:2,scores:[0,0,0,0,0,0],stars:[0,0,0,0,0,0],done:[false,false,false,false,false,false],penalty:0,right:0,asked:0,elapsed:0,pct:[0,0,0,0,0,0],finished:false,started:Date.now()};}
+var S=null, R=null, cur=-1, inRun=false;
+var DIAG=false, DS=null, DR=null;
+function load(){try{var j=localStorage.getItem(KEY);return j?JSON.parse(j):null;}catch(e){return null;}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function total(){return Math.max(0,S.scores.reduce(function(a,b){return a+b;},0)-S.penalty);}
+function doneCount(){return S.done.filter(Boolean).length;}
+function liveTotal(){
+  if(!S)return 0;
+  if(!inRun||cur<0||!R)return total();
+  var others=S.scores.reduce(function(a,b,i){return a+(i===cur?0:b);},0);
+  return Math.max(0,others+Math.max(S.scores[cur],R.points)-S.penalty);
+}
+function mult(){return R?1+Math.min(2,Math.floor(R.streak/3)):1;}
+
+/* ---------- interfaz común ---------- */
+var HEART='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.2 3.3 12.6C1 10.3 1 6.6 3.3 4.5c2.1-2 5.2-1.8 7.1.3L12 6.4l1.6-1.6c1.9-2.1 5-2.3 7.1-.3 2.3 2.1 2.3 5.8 0 8.1z"/></svg>';
+function hud(){
+  if(!S)return;
+  var r=RATINGS[doneCount()];var c=$('#rating');c.textContent=r;c.className='chip '+rcls(r);
+  var hs=$('#hearts');
+  if(!hs.firstChild){hs.innerHTML=HEART+HEART+HEART;}
+  var svgs=hs.querySelectorAll('svg');
+  for(var i=0;i<svgs.length;i++){svgs[i].setAttribute('class',i>=S.lives?'lost':'');}
+  $('#score').textContent=fmt(liveTotal());
+  var m=inRun?mult():1;var me=$('#mult');me.hidden=m<2;me.textContent='×'+m;
+}
+function show(name,nohud){
+  ['start','map','play','level','over','end'].forEach(function(n){$('#s-'+n).hidden=(n!==name);});
+  $('#hud').hidden=(name==='start'||!!nohud||DIAG);
+  window.scrollTo(0,0);
+}
+function loseLife(){
+  S.lives=Math.max(0,S.lives-1);
+  var h=$('#hearts');h.classList.remove('hit');void h.offsetWidth;h.classList.add('hit');
+  return S.lives===0;
+}
+function award(base,f){
+  var m=mult();var pts=Math.round((base+Math.round(60*f))*m);
+  R.points+=pts;R.streak++;R.last={pts:pts,m:m};return pts;
+}
+function startTimer(sec,onEnd){
+  if(DIAG)return {stop:function(){return 1;}};
+  var bar=$('#timerbar'),txt=$('#timertxt');var t0=performance.now(),stopped=false,raf=0,tot=sec*1000;
+  bar.className='';
+  function tick(){
+    if(stopped)return;
+    var f=Math.max(0,1-(performance.now()-t0)/tot);
+    bar.style.width=(f*100)+'%';bar.className=f<.3?'low':'';txt.textContent=Math.ceil(f*sec);
+    if(f<=0){stopped=true;onEnd();}else raf=requestAnimationFrame(tick);
+  }
+  bar.style.width='100%';txt.textContent=sec;raf=requestAnimationFrame(tick);
+  return {stop:function(){stopped=true;cancelAnimationFrame(raf);return Math.max(0,1-(performance.now()-t0)/tot);}};
+}
+function frame(L){
+  var p=$('#s-play');p.replaceChildren();
+  p.append(
+    el('div',{class:'lvhead'},el('div',null,el('p',{class:'eyebrow'},(DIAG?'Diagnóstico · prueba ':'Nivel ')+L.n+' de 6'),el('h1',{class:'lvname'},L.name)),el('div',{class:'prog',id:'prog'},'')),
+    DIAG?null:el('div',{class:'timerrow'},el('div',{class:'timer'},el('i',{id:'timerbar'})),el('span',{class:'tsec',id:'timertxt'},'')),
+    el('div',{id:'stage'})
+  );
+}
+function setProg(i,n){$('#prog').textContent=(i+1)+' / '+n;}
+function feedback(card,o,resolve,reject,val){
+  var fb=el('div',{class:'fb '+(o.ok?'ok':'no'),role:'status'},el('h3',null,o.title),o.text?el('p',null,o.text):null,o.pts?el('p',{class:'pts'},o.pts):null);
+  var b=el('button',{class:'btn',type:'button'},o.dead?'Ver qué ha pasado':'Continuar');
+  b.addEventListener('click',function(){if(o.dead)reject(new GameOver());else resolve(val);});
+  fb.append(b);card.append(fb);b.focus();
+}
+function ptsText(){return '+'+fmt(R.last.pts)+' puntos'+(R.last.m>1?' · racha ×'+R.last.m:'');}
+
+/* ---------- pregunta de opción múltiple (sirve para casi todos los niveles) ---------- */
+function ask(o){
+  return new Promise(function(resolve,reject){
+    var st=$('#stage');st.replaceChildren();
+    var card=el('div',{class:'q'});
+    var bossFill=null;
+    if(o.boss){bossFill=el('i');bossFill.style.width=R.hp+'%';card.append(el('div',{class:'boss'},el('b',null,'El Gran Lavado Verde'),el('div',{class:'hp'},bossFill)));}
+    if(o.tag)card.append(el('p',{class:'tag'},o.tag));
+    if(o.scene)card.append(el('p',{class:'detail'},o.scene));
+    card.append(el('h2',{class:'prompt'},o.prompt));
+    if(o.detail)card.append(el('p',{class:'detail'},o.detail));
+    var list=el('div',{class:'opts'+(o.cols?' cols'+o.cols:'')});
+    var btns=o.options.map(function(op,i){
+      var key=(op.hot||String.fromCharCode(97+i)).toUpperCase();
+      var b=el('button',{class:'opt '+(op.cls||''),type:'button'},el('span',{class:'key'},key),el('span',null,op.label));
+      b.addEventListener('click',function(){finish(i);});list.append(b);return b;
+    });
+    card.append(list);
+    var flash=null;if(o.quick&&!DIAG){flash=el('p',{class:'flash'},'');card.append(flash);}
+    var pw=null;
+    if(o.power&&!DIAG&&S.powers>0&&o.options.length>2){
+      pw=el('button',{class:'ghost',type:'button'},'Comodín 50/50 · te quedan '+S.powers);
+      pw.addEventListener('click',function(){
+        if(done||S.powers<1)return;S.powers--;save();
+        var wrong=[];btns.forEach(function(b,i){if(i!==o.correct)wrong.push(i);});
+        shuffle(wrong).slice(0,2).forEach(function(i){btns[i].disabled=true;btns[i].classList.add('dim');});
+        pw.remove();pw=null;
+      });
+      card.append(el('div',{class:'tools'},pw));
+    }
+    st.append(card);
+    var done=false;
+    function onKey(e){
+      if(done||e.ctrlKey||e.metaKey||e.altKey)return;
+      var k=e.key.toLowerCase(),idx=-1;
+      o.options.forEach(function(op,i){if((op.hot||String.fromCharCode(97+i))===k)idx=i;});
+      if(idx<0&&/^[1-9]$/.test(k))idx=Number(k)-1;
+      if(idx>=0&&idx<btns.length&&!btns[idx].disabled)finish(idx);
+    }
+    document.addEventListener('keydown',onKey);
+    var timer=startTimer(o.time,function(){finish(-1);});
+    function finish(i){
+      if(done)return;done=true;document.removeEventListener('keydown',onKey);
+      if(DIAG){
+        btns.forEach(function(b,k){b.disabled=true;b.classList.add(k===i?'sel':'dim');});
+        DR.a++;if(i===o.correct)DR.r++;
+        setTimeout(function(){resolve(i===o.correct);},260);
+        return;
+      }
+      var f=timer.stop();var ok=(i===o.correct);
+      btns.forEach(function(b,k){b.disabled=true;if(k===o.correct)b.classList.add('ok');else if(k===i)b.classList.add('no');else b.classList.add('dim');});
+      if(pw)pw.remove();
+      S.asked++;R.asked++;
+      var pts=0,dead=false;
+      if(ok){S.right++;R.right++;award(o.base,f);if(bossFill&&o.boss){R.hp=Math.max(0,R.hp-100/o.boss.n);bossFill.style.width=R.hp+'%';}}
+      else{R.errors++;R.streak=0;dead=loseLife();}
+      hud();save();
+      if(o.quick){
+        flash.className='flash '+(ok?'ok':'no');
+        flash.textContent=ok?ptsText():(i===-1?'Tiempo agotado. ':'Era ')+o.options[o.correct].label;
+        setTimeout(function(){if(dead)reject(new GameOver());else resolve(ok);},ok?450:1300);
+        return;
+      }
+      var title=ok?'Correcto':(i===-1?'Tiempo agotado':'No era esa');
+      feedback(card,{ok:ok,title:title,text:o.explain,pts:ok?ptsText():'',dead:dead},resolve,reject,ok);
+    }
+  });
+}
+
+/* ---------- ordenar ---------- */
+function askOrder(o){
+  return new Promise(function(resolve,reject){
+    var n=o.items.length,st=$('#stage');st.replaceChildren();
+    var bank=shuffle(o.items.map(function(t,i){return {t:t,i:i};}));
+    if(bank.every(function(x,k){return x.i===k;}))bank.reverse();
+    var slots=[],locked=[],tries=0,done=false,k;
+    for(k=0;k<n;k++){slots.push(null);locked.push(false);}
+    var card=el('div',{class:'q'});
+    var slotList=el('ol',{class:'slots'}),bankBox=el('div',{class:'bank'}),msg=el('p',{class:'ordermsg'},'Toca las piezas en orden. Toca una pieza colocada para devolverla.');
+    var check=el('button',{class:'btn',type:'button'},DIAG?'Confirmar orden':'Comprobar orden');check.disabled=true;
+    card.append(el('p',{class:'tag'},'Ordena'),el('h2',{class:'prompt'},o.title),el('p',{class:'detail'},o.hint),slotList,bankBox,msg,el('div',{class:'row'},check));
+    st.append(card);
+    function render(){
+      slotList.replaceChildren();
+      slots.forEach(function(it,k){
+        var li=el('li',{class:'slot'+(it?' filled':'')+(locked[k]?' locked':'')},el('span',{class:'num'},String(k+1)),el('span',null,it?it.t:'Toca una pieza'));
+        if(it&&!locked[k]&&!done)li.addEventListener('click',function(){slots[k]=null;bank.push(it);render();});
+        slotList.append(li);
+      });
+      bankBox.replaceChildren();
+      bank.forEach(function(it){
+        var b=el('button',{class:'chipbtn',type:'button'},it.t);
+        b.addEventListener('click',function(){
+          if(done)return;var k=-1;for(var j=0;j<n;j++){if(!slots[j]&&!locked[j]){k=j;break;}}
+          if(k<0)return;slots[k]=it;bank=bank.filter(function(x){return x!==it;});render();
+        });
+        bankBox.append(b);
+      });
+      check.disabled=done||slots.some(function(s){return !s;});
+    }
+    function solution(){return o.items.map(function(t,i){return (i+1)+'. '+t;}).join('  ');}
+    var timer=startTimer(o.time,function(){
+      if(done)return;done=true;R.errors++;R.streak=0;S.asked++;R.asked++;
+      var dead=loseLife();hud();save();render();
+      feedback(card,{ok:false,title:'Tiempo agotado',text:'Orden correcto: '+solution(),dead:dead},resolve,reject,false);
+    });
+    check.addEventListener('click',function(){
+      if(done)return;
+      if(DIAG){done=true;var okAll=slots.every(function(it,k){return it&&it.i===k;});DR.a++;if(okAll)DR.r++;render();resolve(okAll);return;}
+      tries++;var all=true;
+      slots.forEach(function(it,k){if(it&&it.i===k)locked[k]=true;else all=false;});
+      if(all){
+        done=true;var f=timer.stop();S.asked++;R.asked++;if(tries===1){S.right++;R.right++;}
+        award(150+(tries===1?60:0),f);hud();save();render();
+        feedback(card,{ok:true,title:'Orden correcto',text:tries===1?'A la primera.':'Lo has conseguido en '+tries+' intentos.',pts:ptsText(),dead:false},resolve,reject,true);
+        return;
+      }
+      R.errors++;R.streak=0;var dead=loseLife();hud();save();
+      slots.forEach(function(it,k){if(it&&!locked[k]){bank.push(it);slots[k]=null;}});
+      if(dead){
+        done=true;timer.stop();S.asked++;R.asked++;render();
+        feedback(card,{ok:false,title:'Te has quedado sin vidas',text:'Orden correcto: '+solution(),dead:true},resolve,reject,false);
+        return;
+      }
+      msg.textContent='Las piezas en verde están bien colocadas. Recoloca el resto.';render();
+    });
+    render();
+  });
+}
+
+/* ---------- niveles ---------- */
+async function lvl1(){
+  var qs=DIAG?shuffle(DI.l1.map(function(t){return L1.filter(function(x){return x[0]===t;})[0];})):shuffle(L1).slice(0,8),terms=L1.map(function(x){return x[0];});
+  for(var i=0;i<qs.length;i++){
+    setProg(i,qs.length);var term=qs[i][0],def=qs[i][1];
+    var opts=shuffle([term].concat(shuffle(terms.filter(function(t){return t!==term;})).slice(0,3)));
+    await ask({tag:'Concepto',prompt:'¿De qué concepto se trata?',detail:def,options:opts.map(function(t){return {label:t};}),correct:opts.indexOf(term),explain:'Es «'+term+'».',time:25,base:100,power:true});
+  }
+}
+async function lvl2(){
+  var pick=function(k){var src=DIAG?L2D[k].slice(0,4):shuffle(L2D[k]).slice(0,4);return src.map(function(t){return {t:t,k:k};});};
+  var cards=shuffle(pick('a').concat(pick('s'),pick('g')));
+  var opts=[{label:'Ambiental',cls:'pa',hot:'a'},{label:'Social',cls:'ps',hot:'s'},{label:'Gobernanza',cls:'pg',hot:'g'}];
+  for(var i=0;i<cards.length;i++){
+    setProg(i,cards.length);
+    await ask({tag:'¿A qué criterio pertenece?',prompt:cards[i].t,options:opts,correct:['a','s','g'].indexOf(cards[i].k),time:i<4?7:(i<8?6:5),base:80,quick:true,cols:3});
+  }
+}
+async function lvl3(){
+  var sets=DIAG?pickIdx(ORD,DI.ord):shuffle(ORD).slice(0,4);
+  for(var i=0;i<sets.length;i++){
+    setProg(i,sets.length);
+    await askOrder({title:sets[i].t,hint:sets[i].h,items:sets[i].i,time:25+9*sets[i].i.length});
+  }
+}
+async function lvl4(){
+  var cases;
+  if(DIAG){cases=pickIdx(GW,DI.gw);}
+  else{var g=shuffle(GW.filter(function(x){return x.g;})).slice(0,4),r=shuffle(GW.filter(function(x){return !x.g;})).slice(0,4);cases=shuffle(g.concat(r));}
+  for(var i=0;i<cases.length;i++){
+    setProg(i,cases.length);var c=cases[i];
+    await ask({tag:c.co,prompt:'«'+c.claim+'»',detail:c.ev,options:[{label:'Greenwashing',cls:'pbad',hot:'g'},{label:'Acción real',cls:'pgood',hot:'r'}],correct:c.g?0:1,explain:c.why,time:30,base:120,cols:2});
+  }
+}
+async function mcBank(bank,time,base,boss,diagIdx){
+  var qs=DIAG?pickIdx(bank,diagIdx):shuffle(bank).slice(0,8);
+  for(var i=0;i<qs.length;i++){
+    setProg(i,qs.length);var q=qs[i];
+    var idx=shuffle([0,1,2,3]);
+    await ask({tag:(boss&&!DIAG)?'Ataque del jefe':'Reto',scene:q.p,prompt:q.q,options:idx.map(function(k){return {label:q.o[k]};}),correct:idx.indexOf(0),explain:q.e,time:time,base:base,power:true,boss:(boss&&!DIAG)?{n:8}:null});
+  }
+}
+var LV=[lvl1,lvl2,lvl3,lvl4,function(){return mcBank(L5,25,110,false,DI.l5);},function(){R.hp=100;return mcBank(L6,20,150,true,DI.l6);}];
+
+/* ---------- flujo ---------- */
+async function playLevel(n){
+  cur=n-1;R={points:0,streak:0,errors:0,asked:0,right:0,hp:100,last:{pts:0,m:1}};inRun=true;
+  var t0=Date.now();frame(LEVELS[cur]);show('play');hud();
+  try{await LV[cur]();}
+  catch(e){inRun=false;S.elapsed+=Date.now()-t0;save();if(e instanceof GameOver){gameOver();return;}throw e;}
+  inRun=false;S.elapsed+=Date.now()-t0;completeLevel();
+}
+function starsFor(){var a=R.asked?R.right/R.asked:0;return a>=0.95?3:(a>=0.8?2:1);}
+function completeLevel(){
+  var before=doneCount(),firstTime=!S.done[cur],prevBest=S.scores[cur];
+  if(!S.pct)S.pct=[0,0,0,0,0,0];
+  S.pct[cur]=Math.max(S.pct[cur]||0,R.asked?Math.round(100*R.right/R.asked):0);
+  S.scores[cur]=Math.max(S.scores[cur],R.points);
+  var st=starsFor();S.stars[cur]=Math.max(S.stars[cur],st);S.done[cur]=true;
+  var heart=(R.errors===0&&S.lives<3);if(heart)S.lives++;
+  save();hud();
+  var after=doneCount(),allDone=S.done.every(Boolean);
+  var box=$('#s-level');box.replaceChildren();
+  var upRow=el('div',{class:'up'},el('span',{class:'chip '+rcls(RATINGS[before])},RATINGS[before]),el('span',{class:'arrow'},after>before?'→':'='),el('span',{class:'chip '+rcls(RATINGS[after])},RATINGS[after]));
+  var line=cur===5?'Has derrotado al Gran Lavado Verde.':(after>before?'Subes un peldaño en la escala ASG.':'Nivel repetido. Tu mejor marca cuenta para el total.');
+  var best=(!firstTime&&R.points<=prevBest)?'Tu mejor marca sigue siendo '+fmt(prevBest)+'.':'';
+  box.append(el('div',{class:'panel'},
+    el('p',{class:'eyebrow'},'Nivel '+(cur+1)+' superado'),
+    el('h1',{class:'lvname'},LEVELS[cur].name),
+    upRow,
+    el('p',null,line),
+    el('div',null,el('span',{class:'lbl'},'Puntos del nivel'),el('p',{class:'bigscore'},fmt(R.points))),
+    el('div',{class:'row'},stars(st,true),el('span',{class:'mono'},R.right+' de '+R.asked+' a la primera')),
+    heart?el('p',null,'Nivel sin fallos: recuperas una vida.'):null,
+    best?el('p',{style:'color:var(--muted)'},best):null,
+    el('div',{class:'row'},allDone?btnTo('Ver resultado final',finishGame,'btn big'):btnTo(cur<5&&!S.done[cur+1]?'Siguiente nivel':'Ir al mapa',function(){if(cur<5&&!S.done[cur+1])playLevel(cur+2);else openMap();},'btn big'),allDone?null:btnTo('Mapa',openMap,'btn alt'))
+  ));
+  show('level');
+}
+function btnTo(t,fn,cls){var b=el('button',{class:cls||'btn',type:'button'},t);b.addEventListener('click',fn);return b;}
+
+function openMap(){
+  inRun=false;cur=-1;hud();
+  var d=doneCount();
+  $('#map-name').textContent=S.name;
+  var sc=$('#map-scale');sc.replaceChildren();
+  RATINGS.forEach(function(r,i){sc.append(el('span',{class:rcls(r)+(i<=d?' on':'')+(i===d?' now':'')},r));});
+  $('#map-next').textContent=d>=6?'Has llegado a AAA.':'Estás en '+RATINGS[d]+'. Supera el nivel '+(d+1)+' para subir a '+RATINGS[d+1]+'.';
+  var box=$('#ladder');box.replaceChildren();
+  LEVELS.forEach(function(L,i){
+    var unlocked=(i===0||S.done[i-1]),done=S.done[i];
+    var rung=el('div',{class:'rung '+rcls(RATINGS[i+1])},RATINGS[i+1]);
+    var meta=el('div',{class:'meta'},done?stars(S.stars[i]):null,done?el('span',{class:'mono'},fmt(S.scores[i])+' pts'):el('span',null,L.tip));
+    var btn=el('button',{class:'btn'+(done?' alt':''),type:'button'},done?'Repetir':(unlocked?'Jugar':'Bloqueado'));
+    if(!unlocked)btn.disabled=true;else btn.addEventListener('click',function(){playLevel(L.n);});
+    box.append(el('article',{class:'lv'+(unlocked?'':' locked')},rung,el('div',null,el('h3',null,L.n+'. '+L.name),el('p',null,L.sub),meta),btn));
+  });
+  show('map');
+}
+
+function gameOver(){
+  hud();var box=$('#s-over');box.replaceChildren();
+  var L=LEVELS[cur];var armed=false;
+  var retry=btnTo('Reintentar el nivel con 2 vidas (−250 puntos)',function(){S.lives=2;S.penalty+=250;save();playLevel(L.n);},'btn big');
+  var reset=btnTo('Empezar de cero',function(){
+    if(!armed){armed=true;reset.textContent='Seguro. Pulsa otra vez para borrar tu progreso';return;}
+    var nm=S.name;S=fresh(nm);save();hud();openMap();
+  },'btn alt');
+  box.append(el('div',{class:'panel'},
+    el('p',{class:'eyebrow'},'Sin vidas'),
+    el('h1',{class:'lvname'},'Has caído en el nivel '+L.n+': '+L.name),
+    el('p',null,'Llevas '+fmt(total())+' puntos y calificación '+RATINGS[doneCount()]+'. Los puntos de este nivel no cuentan.'),
+    el('div',{class:'row'},retry,reset)
+  ));
+  show('over');
+}
+
+function code(name,score,t){var h=2166136261,s=name+'|'+score+'|'+Math.round(t/1000);for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase().slice(-5).padStart(5,'0');}
+function titleFor(score){return score>=14000?'Leyenda AAA':(score>=9000?'Director/a de sostenibilidad':(score>=5000?'Responsable ASG':(score>=2500?'Técnico/a ASG':'Becario/a ASG')));}
+function getLB(){try{return JSON.parse(localStorage.getItem(LBKEY)||'[]');}catch(e){return [];}}
+function addLB(e){try{var l=getLB();l.push(e);l.sort(function(a,b){return b.s-a.s;});localStorage.setItem(LBKEY,JSON.stringify(l.slice(0,8)));}catch(x){}}
+function renderLB(target){
+  var l=getLB();var box=$('#board-box');
+  if(!target){box.hidden=!l.length;target=$('#board');}
+  target.replaceChildren();
+  l.slice(0,5).forEach(function(e,i){target.append(el('li',null,el('span',{class:'pos'},String(i+1)),el('span',null,e.n),el('span',{class:'mono'},fmt(e.s)),el('span',{class:'chip '+rcls(e.r)},e.r)));});
+}
+function finishGame(){
+  S.finished=true;save();
+  var sc=total(),nm=S.name,cd=code(nm,sc,S.elapsed),ti=titleFor(sc);
+  var acc=S.asked?Math.round(100*S.right/S.asked):0;
+  var starSum=S.stars.reduce(function(a,b){return a+b;},0);
+  addLB({n:nm,s:sc,r:'AAA'});
+  var summary=nm+' · '+fmt(sc)+' puntos · AAA · '+acc+'% a la primera · '+mmss(S.elapsed)+' · código '+cd;
+  var box=$('#s-end');box.replaceChildren();
+  var copy=el('button',{class:'btn',type:'button'},'Copiar mi resultado');
+  copy.addEventListener('click',function(){
+    var ok=function(){copy.textContent='Copiado';};
+    var fail=function(){copy.textContent='No se pudo copiar. Haz una captura';};
+    try{navigator.clipboard.writeText(summary).then(ok,fail);}catch(e){fail();}
+  });
+  var copy2=el('button',{class:'btn alt',type:'button'},'Copiar para la hoja de clase');
+  copy2.addEventListener('click',function(){copyText(copy2,tsvAll(nm,sc,loadD()));});
+  var lb=el('ol',{class:'board',style:'list-style:none;margin:0;padding:0;display:grid;gap:6px'});
+  box.append(el('div',{class:'panel'},
+    el('p',{class:'eyebrow'},'Misión cumplida'),
+    el('div',{class:'up'},el('span',{class:'chip r-aaa',style:'font-size:28px;padding:6px 18px'},'AAA'),el('h1',{class:'lvname'},ti)),
+    el('p',null,nm+', has llegado a lo más alto de la escala ASG.'),
+    el('div',null,el('span',{class:'lbl'},'Puntuación final'),el('p',{class:'bigscore'},fmt(sc))),
+    el('div',{class:'facts'},
+      el('div',null,el('span',{class:'lbl'},'A la primera'),el('b',null,acc+'%')),
+      el('div',null,el('span',{class:'lbl'},'Estrellas'),el('b',null,starSum+' / 18')),
+      el('div',null,el('span',{class:'lbl'},'Tiempo'),el('b',null,mmss(S.elapsed))),
+      el('div',null,el('span',{class:'lbl'},'Código'),el('b',{class:'code'},cd))
+    ),
+    cmpNode(loadD()),
+    el('p',{style:'color:var(--muted)'},'Enseña esta pantalla a tu profe o copia el resultado para el ranking de la clase.'),
+    el('div',{class:'row'},copy,copy2,btnTo('Jugar otra vez',function(){S=fresh(nm);save();openMap();},'btn alt'),btnTo('Ver mapa',openMap,'btn alt')),
+    el('div',null,el('h2',{style:'font-size:20px;margin-bottom:8px'},'Mejores partidas en este dispositivo'),lb)
+  ));
+  renderLB(lb);
+  show('end');
+}
+
+/* ---------- diagnóstico (intento 1) y comparación ---------- */
+var DKEY='mision-asg-diag-v1';
+function loadD(){try{var j=localStorage.getItem(DKEY);return j?JSON.parse(j):null;}catch(e){return null;}}
+function saveD(){try{localStorage.setItem(DKEY,JSON.stringify(DS));}catch(e){}}
+function pct(r,a){return a?Math.round(100*r/a):0;}
+function avg(a){return a.length?Math.round(a.reduce(function(x,y){return x+y;},0)/a.length):0;}
+function diagPcts(D){return D.res.map(function(x){return pct(x.r,x.a);});}
+function copyText(btn,text){
+  var ok=function(){btn.textContent='Copiado';};
+  var fail=function(){btn.textContent='No se pudo copiar. Haz una captura';};
+  try{navigator.clipboard.writeText(text).then(ok,fail);}catch(e){fail();}
+}
+function tsvDiag(D){var p=diagPcts(D);return [D.name,'diagnostico',avg(p)].concat(p,['']).join('\t');}
+function tsvAll(nm,sc,D){
+  var rows=[];
+  if(D&&D.done)rows.push(tsvDiag(D));
+  var mp=(S.pct||[0,0,0,0,0,0]).slice();
+  rows.push([nm,'mision',avg(mp)].concat(mp,[sc]).join('\t'));
+  return rows.join('\n');
+}
+async function runDiag(nm){
+  DIAG=true;DS={name:nm,res:[],elapsed:0,done:false};
+  var t0=Date.now();
+  R={points:0,streak:0,errors:0,asked:0,right:0,hp:100,last:{pts:0,m:1}};
+  for(var n=1;n<=6;n++){
+    cur=n-1;DR={r:0,a:0};
+    frame(LEVELS[cur]);show('play');
+    await LV[cur]();
+    DS.res.push({r:DR.r,a:DR.a});
+  }
+  DS.elapsed=Date.now()-t0;DS.done=true;saveD();cur=-1;
+  showDiagResult(DS);
+}
+function showDiagResult(D){
+  DIAG=false;
+  var ps=diagPcts(D),tot=D.res.reduce(function(a,x){return a+x.r;},0),n=D.res.reduce(function(a,x){return a+x.a;},0);
+  var box=$('#s-level');box.replaceChildren();
+  var bars=el('div',{class:'bars'});
+  D.res.forEach(function(x,i){
+    var tr=el('div',{class:'track'},el('i'));tr.firstChild.style.width=ps[i]+'%';
+    bars.append(el('div',{class:'bar'},el('span',{class:'t'},LEVELS[i].name),el('span',{class:'n'},x.r+' / '+x.a+' · '+ps[i]+'%'),tr));
+  });
+  var copy=el('button',{class:'btn',type:'button'},'Copiar para la hoja de clase');
+  copy.addEventListener('click',function(){copyText(copy,tsvDiag(D));});
+  box.append(el('div',{class:'panel'},
+    el('p',{class:'eyebrow'},'Intento 1 completado'),
+    el('h1',{class:'lvname'},D.name+', este es tu punto de partida'),
+    el('div',null,el('span',{class:'lbl'},'Aciertos'),el('p',{class:'bigscore'},pct(tot,n)+'%')),
+    el('p',{class:'mono'},tot+' de '+n+' preguntas · '+mmss(D.elapsed)),
+    bars,
+    el('p',{style:'color:var(--muted)'},'No te hemos dicho qué has fallado. Cuando tengas los apuntes, haz el intento 2 y verás cuánto mejoras.'),
+    el('div',{class:'row'},copy,btnTo('Volver al inicio',startScreen,'btn alt'))
+  ));
+  show('level',true);
+}
+function cmpNode(D){
+  if(!D||!D.done)return null;
+  var dp=diagPcts(D),mp=(S.pct||[0,0,0,0,0,0]).slice();
+  var g=el('div',{class:'cmp'},el('span',{class:'h'},'Prueba'),el('span',{class:'h'},'Diagnóstico'),el('span',{class:'h'},'Misión'),el('span',{class:'h'},'Cambio'));
+  var sign=function(d){return (d>0?'+':'')+d+' pp';};
+  var cls=function(d){return 'mono '+(d>0?'dpos':(d<0?'dneg':''));};
+  LEVELS.forEach(function(L,i){var d=mp[i]-dp[i];g.append(el('span',null,L.name),el('span',{class:'mono'},dp[i]+'%'),el('span',{class:'mono'},mp[i]+'%'),el('span',{class:cls(d)},sign(d)));});
+  var da=avg(dp),ma=avg(mp),dd=ma-da;
+  g.append(el('b',null,'Media'),el('b',{class:'mono'},da+'%'),el('b',{class:'mono'},ma+'%'),el('b',{class:cls(dd)},sign(dd)));
+  return el('div',null,el('h2',{style:'font-size:20px;margin-bottom:10px'},'Tu mejora respecto al diagnóstico'),g,el('p',{class:'note'},'Porcentaje de aciertos a la primera. pp = puntos porcentuales.'));
+}
+
+/* ---------- inicio ---------- */
+function startScreen(){
+  var prev=load(),D=loadD();DIAG=false;
+  var nm=(prev&&prev.name)||(D&&D.name)||'';
+  if(nm&&!$('#name').value)$('#name').value=nm;
+  if(prev&&prev.name&&!prev.finished&&Array.isArray(prev.done)){
+    S=prev;$('#resume').hidden=false;$('#resume-name').textContent=prev.name;$('#btn-start').hidden=true;
+  }else{$('#resume').hidden=true;$('#btn-start').hidden=false;}
+  var dn=$('#diag-note'),bd=$('#btn-diag');
+  if(D&&D.done){
+    bd.textContent='Ver resultado del diagnóstico';
+    dn.textContent='Ya has hecho el intento 1. Cuando tengas los apuntes, haz el intento 2.';
+    $('#btn-diag-reset').hidden=false;
+  }else{
+    bd.textContent='Intento 1 · Diagnóstico';
+    dn.textContent='Haz el intento 1 sin apuntes. El intento 2, cuando tu profe te dé el material.';
+    $('#btn-diag-reset').hidden=true;
+  }
+  renderLB();show('start');hud();
+}
+$('#btn-start').addEventListener('click',function(){
+  var nm=$('#name').value.trim();
+  if(!nm){$('#name-err').textContent='Escribe tu nombre o un apodo para empezar.';$('#name').focus();return;}
+  S=fresh(nm);save();openMap();
+});
+$('#name').addEventListener('keydown',function(e){if(e.key==='Enter')$('#btn-start').click();});
+$('#btn-resume').addEventListener('click',function(){openMap();});
+$('#btn-reset').addEventListener('click',function(){
+  var nm=S?S.name:'';S=null;try{localStorage.removeItem(KEY);}catch(e){}
+  $('#resume').hidden=true;$('#btn-start').hidden=false;$('#name').value=nm;$('#name').focus();
+});
+$('#btn-diag').addEventListener('click',function(){
+  var D=loadD();
+  if(D&&D.done){showDiagResult(D);return;}
+  var nm=$('#name').value.trim();
+  if(!nm){$('#name-err').textContent='Escribe tu nombre o un apodo para empezar.';$('#name').focus();return;}
+  runDiag(nm);
+});
+var armedD=false;
+$('#btn-diag-reset').addEventListener('click',function(){
+  var b=$('#btn-diag-reset');
+  if(!armedD){armedD=true;b.textContent='Seguro. Pulsa otra vez para borrar el diagnóstico';return;}
+  armedD=false;b.textContent='Borrar mi diagnóstico';
+  try{localStorage.removeItem(DKEY);}catch(e){}
+  startScreen();
+});
+startScreen();
+})();
+</script>
+
+</body></html>
